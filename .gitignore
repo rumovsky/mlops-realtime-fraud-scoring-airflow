@@ -3,3 +3,8 @@ __pycache__/
 .venv/
 .env
 *.csv
+airflow/logs/
+airflow/__pycache__/
+airflow/airflow.db
+airflow/work/*
+!airflow/work/.gitkeep

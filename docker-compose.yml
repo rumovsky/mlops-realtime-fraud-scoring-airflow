@@ -76,6 +76,10 @@ services:
       KAFKA_BROKER: kafka:9092
       KAFKA_INPUT_TOPIC: transactions
       KAFKA_OUTPUT_TOPIC: scoring
+      MODEL_PATH: /app/models/model.cbm
+      MODEL_VERSION_PATH: /app/models/model.version
+    volumes:
+      - ./models:/app/models
 
   results_writer:
     build: ./results_writer
@@ -101,3 +105,31 @@ services:
       POSTGRES_DSN: postgresql://fraud:fraud@postgres:5432/fraud
     ports:
       - "8501:8501"
+
+  airflow:
+    build: ./airflow
+    user: "0:0"
+    depends_on:
+      kafka-setup:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    environment:
+      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
+      AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://fraud:fraud@postgres:5432/fraud
+      AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL: "10"
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "false"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags:ro
+      - ./airflow/tasks:/opt/airflow/tasks:ro
+      - ./airflow/work:/opt/airflow/work
+      - ./data:/opt/airflow/data:ro
+      - ./models:/opt/airflow/models
+      - ./fraud_detector:/opt/airflow/project/fraud_detector:ro
+    ports:
+      - "8081:8080"
+    entrypoint: ["/bin/bash"]
+    command: ["/opt/airflow/tasks/start_airflow.sh"]

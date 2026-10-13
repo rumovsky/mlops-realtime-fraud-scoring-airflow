@@ -27,14 +27,19 @@ for message in consumer:
     payload = message.value
     transaction_id = payload["transaction_id"]
     features = preprocess(payload["data"])
-    score, fraud_flag = score_transaction(features)
+    score, fraud_flag, model_version = score_transaction(features)
     producer.send(
         OUTPUT_TOPIC,
         {
             "transaction_id": transaction_id,
             "score": score,
             "fraud_flag": fraud_flag,
+            "model_version": model_version,
         },
     ).get(timeout=30)
     consumer.commit()
-    print(f"{transaction_id}: score={score:.6f}, fraud_flag={fraud_flag}", flush=True)
+    print(
+        f"{transaction_id}: score={score:.6f}, fraud_flag={fraud_flag}, "
+        f"model_version={model_version}",
+        flush=True,
+    )

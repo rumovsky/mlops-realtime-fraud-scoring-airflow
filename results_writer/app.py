@@ -19,9 +19,13 @@ with psycopg.connect(POSTGRES_DSN, autocommit=True) as connection:
             transaction_id TEXT PRIMARY KEY,
             score DOUBLE PRECISION NOT NULL,
             fraud_flag INTEGER NOT NULL,
+            model_version TEXT NOT NULL DEFAULT 'unknown',
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
         """
+    )
+    connection.execute(
+        "ALTER TABLE scores ADD COLUMN IF NOT EXISTS model_version TEXT NOT NULL DEFAULT 'unknown'"
     )
 
 consumer = KafkaConsumer(
@@ -39,11 +43,18 @@ with psycopg.connect(POSTGRES_DSN, autocommit=True) as connection:
         result = message.value
         connection.execute(
             """
-            INSERT INTO scores (transaction_id, score, fraud_flag)
-            VALUES (%s, %s, %s)
+            INSERT INTO scores (transaction_id, score, fraud_flag, model_version)
+            VALUES (%s, %s, %s, %s)
             ON CONFLICT (transaction_id) DO UPDATE
-            SET score = EXCLUDED.score, fraud_flag = EXCLUDED.fraud_flag
+            SET score = EXCLUDED.score,
+                fraud_flag = EXCLUDED.fraud_flag,
+                model_version = EXCLUDED.model_version
             """,
-            (result["transaction_id"], result["score"], result["fraud_flag"]),
+            (
+                result["transaction_id"],
+                result["score"],
+                result["fraud_flag"],
+                result.get("model_version", "unknown"),
+            ),
         )
         consumer.commit()
