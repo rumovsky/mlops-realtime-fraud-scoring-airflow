@@ -3,6 +3,7 @@ import io
 import json
 import os
 import uuid
+from pathlib import Path
 
 import streamlit as st
 from kafka import KafkaProducer
@@ -19,6 +20,12 @@ POSTGRES_DSN = os.getenv(
 
 st.set_page_config(page_title="Realtime fraud scoring", page_icon="✅")
 st.title("Realtime fraud scoring")
+current_model = Path("/app/models/current.json")
+if current_model.exists():
+    st.caption(f"Модель: {json.loads(current_model.read_text())['version']}")
+report = Path("/app/reports/latest.html")
+if report.exists():
+    st.download_button("Отчёт Data Quality", report.read_bytes(), "data_quality.html", "text/html")
 st.write("Загрузите CSV и отправьте его строки отдельными сообщениями в Kafka.")
 
 if st.button("Посмотреть результаты"):
@@ -26,7 +33,7 @@ if st.button("Посмотреть результаты"):
         with psycopg.connect(POSTGRES_DSN) as connection:
             fraud_rows = connection.execute(
                 """
-                SELECT transaction_id, score, fraud_flag
+                SELECT transaction_id, score, fraud_flag, model_version
                 FROM scores
                 WHERE fraud_flag = 1
                 ORDER BY created_at DESC
@@ -44,7 +51,7 @@ if st.button("Посмотреть результаты"):
         st.subheader("Последние fraud-транзакции")
         st.dataframe(
             [
-                {"transaction_id": row[0], "score": row[1], "fraud_flag": row[2]}
+                {"transaction_id": row[0], "score": row[1], "fraud_flag": row[2], "model_version": row[3]}
                 for row in fraud_rows
             ],
             use_container_width=True,

@@ -8,3 +8,7 @@ airflow/__pycache__/
 airflow/airflow.db
 airflow/work/*
 !airflow/work/.gitkeep
+models/v2-*.cbm
+models/*.tmp
+reports/*.html
+!reports/.gitkeep

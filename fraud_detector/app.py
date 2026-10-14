@@ -2,7 +2,6 @@ import json
 import os
 from kafka import KafkaConsumer, KafkaProducer
 
-from preprocessing import preprocess
 from scorer import score_transaction
 
 
@@ -26,8 +25,7 @@ producer = KafkaProducer(
 for message in consumer:
     payload = message.value
     transaction_id = payload["transaction_id"]
-    features = preprocess(payload["data"])
-    score, fraud_flag, model_version = score_transaction(features)
+    score, fraud_flag, model_version = score_transaction(payload["data"])
     producer.send(
         OUTPUT_TOPIC,
         {
